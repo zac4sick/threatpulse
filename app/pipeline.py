@@ -15,7 +15,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 
-from . import uptime
+from . import breaches as breach_feeds, uptime
 
 log = logging.getLogger("threatpulse.pipeline")
 UA = "ThreatPulse/1.0 (open-source threat dashboard)"
@@ -417,6 +417,7 @@ def build(prev: dict | None = None, env: dict | None = None) -> dict:
 
     # Breaches & IOCs ------------------------------------------------------
     breaches = _safe("Have I Been Pwned", fetch_hibp, prev.get("breaches", []), status)
+    breach_feed = breach_feeds.collect(lambda u: http_get(u), prev.get("breach_feed"), breaches, status)
     iocs: list[dict] = prev.get("iocs", [])
     if env.get("ABUSECH_AUTH_KEY"):
         iocs = _safe("abuse.ch ThreatFox", lambda: fetch_threatfox(env["ABUSECH_AUTH_KEY"]), iocs, status)
@@ -454,6 +455,8 @@ def build(prev: dict | None = None, env: dict | None = None) -> dict:
             "victims": len(victims),
             "victims_south_asia": sum(1 for v in victims if v.get("south_asia")),
             "iocs_24h": len(iocs),
+            "breach_reports_7d": sum(1 for b in breach_feed if (b["date"] or "") >= week),
+            "leak_reports_7d": sum(1 for b in breach_feed if b["kind"] == "leak" and (b["date"] or "") >= week),
             "services_issues": sum(1 for x in outages["services"] if x["state"] in ("down", "degraded")),
             "sites_down": sum(1 for x in outages["sites"] if x["state"] == "down"),
         },
@@ -462,6 +465,7 @@ def build(prev: dict | None = None, env: dict | None = None) -> dict:
         "vulns": vulns,
         "ransomware": victims,
         "breaches": breaches,
+        "breach_feed": breach_feed,
         "iocs": sorted((i for i in iocs if i["confidence"] >= 75), key=lambda i: i["first_seen"], reverse=True)[:40],
         "news": news[:40],
         "outages": outages,

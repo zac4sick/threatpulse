@@ -35,8 +35,9 @@
     <nav class="tabs" aria-label="Sections">
       <a href="#vulns" data-tab="vulns">Vulnerabilities <span class="count" id="cVulns"></span></a>
       <a href="#ransomware" data-tab="ransomware">Ransomware <span class="count" id="cRansom"></span></a>
+      <a href="#breaches" data-tab="breaches">Data breaches <span class="count" id="cBreach"></span></a>
       <a href="#outages" data-tab="outages">Outages <span class="count" id="cOut"></span></a>
-      <a href="#intel" data-tab="intel">Breaches &amp; IOCs</a>
+      <a href="#intel" data-tab="intel">IOCs &amp; news</a>
       <a href="#trends" data-tab="trends">Trends</a>
     </nav>
   </div>
@@ -115,6 +116,29 @@
     <button class="btn more-btn" type="button" id="moreR" hidden>Show more</button>
   </section>
 
+  <!-- Data breaches -->
+  <section class="panel" id="p-breaches" aria-labelledby="h-breach" hidden>
+    <div class="ph"><div><h2 id="h-breach">Data breaches</h2><p>New data leaks spotted on dark-web forums, confirmed breaches and breach news.</p></div></div>
+    <p class="note"><b>Leak reports are claims.</b> They come from researchers who monitor criminal forums and Telegram. ThreatPulse links only to their write-ups and never stores or links leaked data.</p>
+    <a class="hibp" href="https://haveibeenpwned.com/" target="_blank" rel="noopener noreferrer">
+      <span><b>Is your email in a breach?</b> Check it for free on Have I Been Pwned</span><span aria-hidden="true">↗</span></a>
+    <div class="tools">
+      <label class="search"><span class="sr">Search breaches</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="bq" type="search" placeholder="Search company, sector or country" autocomplete="off">
+      </label>
+    </div>
+    <div class="chips" role="group" aria-label="Breach type">
+      <button class="chip bchip" type="button" data-kind="all" aria-pressed="true">All</button>
+      <button class="chip bchip" type="button" data-kind="leak" aria-pressed="false">Dark-web leaks</button>
+      <button class="chip bchip" type="button" data-kind="confirmed" aria-pressed="false">Confirmed</button>
+      <button class="chip bchip" type="button" data-kind="news" aria-pressed="false">News</button>
+    </div>
+    <div class="meta"><span id="bCount" aria-live="polite"></span></div>
+    <div id="blist"></div>
+    <button class="btn more-btn" type="button" id="moreB" hidden>Show more</button>
+  </section>
+
   <!-- Outages -->
   <section class="panel" id="p-outages" aria-labelledby="h-out" hidden>
     <div class="ph"><div><h2 id="h-out">Outage detector</h2><p id="outSub">Official status of major services, plus your own websites.</p></div></div>
@@ -126,7 +150,7 @@
 
   <!-- Breaches & IOCs -->
   <section class="panel" id="p-intel" aria-labelledby="h-intel" hidden>
-    <div class="ph"><div><h2 id="h-intel">Breaches &amp; indicators</h2><p>New breach disclosures, fresh malware infrastructure and headlines.</p></div></div>
+    <div class="ph"><div><h2 id="h-intel">Indicators &amp; news</h2><p>Fresh malware infrastructure to block, and the latest security headlines.</p></div></div>
     <div id="intel"></div>
   </section>
 
@@ -159,6 +183,7 @@
       <dt>✦ Claude summary</dt><dd>A short plain-English explanation written by Claude (Anthropic's AI) from the official advisory. Helpful, but it can be wrong — the official description and advisory link are always under "Details".</dd>
       <dt>★ My stack</dt><dd>Type the vendors you use. Matching items are starred and shown first. Stored only in your browser.</dd>
       <dt>Leak-site claim</dt><dd>A ransomware gang posted the organisation on its extortion site. "2 trackers" means two independent trackers saw it.</dd>
+      <dt>Dark-web leak report</dt><dd>A write-up by researchers who watch criminal forums, saying someone posted or is selling an organisation's data. It's a claim until the organisation confirms it. "Confirmed" items are verified breaches from Have I Been Pwned.</dd>
       <dt>IOC</dt><dd>Indicator of compromise: a malicious URL, domain, IP or file hash. Shown defanged (hxxp, [.]) so it can't be clicked by accident — copy into your blocklists.</dd>
       <dt>Outage detector</dt><dd>Reads each provider's official status page every hour, and checks your own sites for uptime, speed and TLS certificate expiry.</dd>
       <dt>Keyboard</dt><dd>Press <kbd>/</kbd> to search. Each section has its own link, e.g. <code>#outages</code>, to share.</dd>

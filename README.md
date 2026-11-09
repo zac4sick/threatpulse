@@ -5,7 +5,8 @@ It runs free on GitHub Pages (recommended) or on Google Cloud Run.
 
 - **Vulnerabilities:** every CISA known-exploited flaw from the last 30 days, plus new high/critical CVEs from NVD, ranked P1–P4. Each card has a plain-English summary and the fix.
 - **Ransomware (dark-web monitoring):** alleged victims posted on leak sites, merged from ransomware.live and RansomLook. A claim seen by both trackers is marked "2 trackers".
-- **Breaches & IOCs:** newly loaded breaches from Have I Been Pwned, plus fresh high-confidence malware indicators from abuse.ch ThreatFox (shown defanged).
+- **Data breaches:** new data leaks spotted on dark-web forums, from researchers who monitor them and publish write-ups (Daily Dark Web, Dark Web Informer). Also confirmed breaches from Have I Been Pwned and breach news from DataBreaches.net, Security Affairs, Krebs on Security and UpGuard. Duplicate stories are merged, record counts are extracted, and South Asia mentions are tagged. Only the clear-web write-ups are linked, never forums, onion sites or leaked data.
+- **IOCs & news:** fresh high-confidence malware indicators from abuse.ch ThreatFox (shown defanged), plus headlines.
 - **Trends:** exploited flaws per week, most active ransomware groups, most targeted sectors, most active malware families.
 - **Outage detector:** live status of 17 major services (Cloudflare, Google Cloud and Workspace, Slack, Zoom, GitHub, OpenAI, Anthropic and more), read from each provider's official status page. It also checks your own sites (`WATCH_SITES`) for uptime, response time and TLS certificate expiry, keeps a 48-hour uptime strip, and sends Telegram alerts when something goes down or recovers.
 - **South Asia view:** one toggle filters leak claims and headlines to Sri Lanka and its neighbours.

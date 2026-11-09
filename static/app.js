@@ -50,12 +50,12 @@
   let DATA = null;
   const S = {
     tab: "vulns", region: store.get("tp-region") === "sa" ? "sa" : "global",
-    chip: "all", q: "", sort: "priority", vLimit: 20, rq: "", rg: "", rLimit: 60,
+    chip: "all", q: "", sort: "priority", vLimit: 20, rq: "", rg: "", rLimit: 60, bq: "", bkind: "all", bLimit: 40,
   };
   const watchList = () => $("watch").value.split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
   const isWatched = v => v.watch || watchList().some(w => `${v.vendor} ${v.product} ${v.title}`.toLowerCase().includes(w));
   const PR = { P1: 0, P2: 1, P3: 2, P4: 3 };
-  const TABS = ["vulns", "ransomware", "outages", "intel", "trends"];
+  const TABS = ["vulns", "ransomware", "breaches", "outages", "intel", "trends"];
 
   // ------------------------------------------------------------------ vulnerabilities
   function vulnRows() {
@@ -128,7 +128,7 @@
     $("vCount").textContent = `Showing ${rows.length} of ${all.length}` + (all.length !== DATA.vulns.length ? ` (filtered from ${DATA.vulns.length})` : "");
     $("moreV").hidden = all.length <= S.vLimit;
     $("clear").hidden = S.chip === "all" && !S.q;
-    $$(".chip").forEach(c => c.setAttribute("aria-pressed", String(c.dataset.chip === S.chip)));
+    $$(".chip[data-chip]").forEach(c => c.setAttribute("aria-pressed", String(c.dataset.chip === S.chip)));
     const w = watchList();
     $("stackLabel").textContent = w.length ? `Your stack: ${w.join(", ")}` : "Set your stack";
   }
@@ -172,6 +172,45 @@
       ...Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([g, n]) => el("option", { value: g }, `${g} (${n})`)));
     sel.value = counts[cur] ? cur : "";
     S.rg = sel.value;
+  }
+
+  // ------------------------------------------------------------------ data breaches
+  const KIND = { leak: ["b leak", "Dark-web leak"], confirmed: ["b ok", "Confirmed"], news: ["b news", "News"] };
+  const breachItems = () => (DATA.breach_feed || []).filter(b => S.region === "global" || b.south_asia);
+
+  function renderBreaches() {
+    const q = S.bq.toLowerCase();
+    const all = breachItems().filter(b => (S.bkind === "all" || b.kind === S.bkind) &&
+      (!q || `${b.title} ${b.summary} ${b.source}`.toLowerCase().includes(q)));
+    const rows = all.slice(0, S.bLimit);
+    $$(".bchip").forEach(c => c.setAttribute("aria-pressed", String(c.dataset.kind === S.bkind)));
+    $("bCount").textContent = `${all.length} report${all.length === 1 ? "" : "s"}${S.region === "sa" ? " mentioning South Asia" : ""} · last 30 days`;
+    $("moreB").hidden = all.length <= S.bLimit;
+    if (!rows.length) {
+      $("blist").replaceChildren(el("div", { class: "empty" }, (DATA.breach_feed || []).length
+        ? (S.region === "sa" ? "No breach reports mentioning South Asia right now." : "No reports match.")
+        : "Breach feeds fill in on the next refresh."));
+      return;
+    }
+    const kids = []; let lastDay = null;
+    for (const b of rows) {
+      if (b.date !== lastDay) {
+        lastDay = b.date; const rel = relDay(b.date);
+        kids.push(el("div", { class: "day" }, rel === "today" || rel === "yesterday" ? `${rel} · ${b.date}` : b.date || "Date unknown"));
+      }
+      const [cls, label] = KIND[b.kind] || ["b", b.kind];
+      kids.push(el("div", { class: "v bitem" },
+        el("div", {},
+          el("div", { class: "row" }, el("span", { class: cls }, label),
+            (b.tags || []).includes("ransomware") && el("span", { class: "b hot" }, "Ransomware"),
+            (b.tags || []).includes("verified") && el("span", { class: "b ok" }, "Verified")),
+          ext(b.link, b.title, "t"),
+          b.summary && el("small", {}, b.summary),
+          el("small", {}, [b.source, ...(b.also || [])].join(" · "))),
+        el("div", { class: "r" }, b.records ? el("div", { class: "rec" }, `${fmt(b.records)}`) : null,
+          b.records ? el("small", {}, b.kind === "confirmed" ? "accounts" : b.kind === "leak" ? "records claimed" : "records") : null)));
+    }
+    $("blist").replaceChildren(el("div", { class: "list" }, kids));
   }
 
   // ------------------------------------------------------------------ outages
@@ -240,13 +279,7 @@
 
   // ------------------------------------------------------------------ breaches & IOCs
   function renderIntel() {
-    const kids = [el("h3", { class: "sub" }, "Newly disclosed data breaches")];
-    kids.push(DATA.breaches.length ? el("div", { class: "list" }, DATA.breaches.slice(0, 12).map(b => el("div", { class: "v" },
-      el("div", {}, ext(b.link, b.title), b.verified ? el("span", { class: "b ok", title: "Verified by Have I Been Pwned" }, " verified") : null, el("br"),
-        el("small", {}, b.data.join(", "))),
-      el("div", { class: "r" }, el("b", {}, fmt(b.count) + " accounts"), el("br"), el("small", {}, `breached ${b.breach_date}`)))))
-      : el("div", { class: "empty" }, "Breach feed fills in on the next refresh."));
-
+    const kids = [];
     kids.push(el("h3", { class: "sub" }, "Fresh malicious indicators · last 24 h"),
       el("p", { class: "note" }, el("b", {}, "Defanged."), " Block these in your firewall, DNS or EDR. Don't visit them."));
     if (DATA.iocs.length) {
@@ -324,6 +357,8 @@
     // counts on tabs
     const cv = $("cVulns"); cv.textContent = DATA.vulns.filter(v => v.priority === "P1").length; cv.className = "count hot"; cv.title = "P1 items";
     const cr = $("cRansom"); cr.textContent = victims().length; cr.className = "count";
+    const recent = breachItems().filter(b => daysFrom(b.date) >= -7).length;
+    const cb = $("cBreach"); cb.textContent = recent || ""; cb.className = "count"; cb.title = "Reports in the last 7 days"; cb.hidden = !recent;
     const co = $("cOut"); co.textContent = DATA.outages ? outN : ""; co.className = outN ? "count hot" : "count"; co.hidden = !DATA.outages;
 
     const list = victims().slice(0, 25);
@@ -345,14 +380,17 @@
       el("span", { title: v.ok ? `OK (${v.seconds}s)` : "Failed on last refresh" }, el("i", { class: v.ok ? "" : "bad" }), k)));
   }
 
-  function renderAll() { renderBanner(); renderHero(); renderVulns(); fillGroups(); renderRansom(); renderOutages(); renderIntel(); renderTrends(); }
+  function renderAll() { renderBanner(); renderHero(); renderVulns(); fillGroups(); renderRansom(); renderBreaches(); renderOutages(); renderIntel(); renderTrends(); }
 
   // ------------------------------------------------------------------ navigation
   function show(tab, scroll) {
     if (!TABS.includes(tab)) tab = "vulns";
     S.tab = tab;
     TABS.forEach(t => { $("p-" + t).hidden = t !== tab; });
-    $$("nav.tabs a").forEach(a => { if (a.dataset.tab === tab) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    $$("nav.tabs a").forEach(a => {
+      if (a.dataset.tab === tab) { a.setAttribute("aria-current", "page"); a.scrollIntoView({ inline: "center", block: "nearest" }); }
+      else a.removeAttribute("aria-current");
+    });
     if (scroll) $("p-" + tab).scrollIntoView({ block: "start" });
   }
   function jumpTo(id) {
@@ -368,7 +406,7 @@
       if (t.dataset.chip) { S.chip = t.dataset.chip; S.vLimit = 20; if (DATA) renderVulns(); }
       if (location.hash === "#" + t.dataset.go) show(t.dataset.go, true); else location.hash = "#" + t.dataset.go;
     }));
-    $$(".chip").forEach(c => c.addEventListener("click", () => {
+    $$(".chip[data-chip]").forEach(c => c.addEventListener("click", () => {
       S.chip = c.dataset.chip; S.vLimit = 20;
       if (S.chip === "watch" && !watchList().length) $("stackBox").open = true;
       if (DATA) renderVulns();
@@ -383,11 +421,14 @@
     $("rq").addEventListener("input", e => { S.rq = e.target.value.trim(); S.rLimit = 60; if (DATA) renderRansom(); });
     $("rg").addEventListener("change", e => { S.rg = e.target.value; S.rLimit = 60; if (DATA) renderRansom(); });
     $("moreR").addEventListener("click", () => { S.rLimit += 60; renderRansom(); });
+    $("bq").addEventListener("input", e => { S.bq = e.target.value.trim(); S.bLimit = 40; if (DATA) renderBreaches(); });
+    $$(".bchip").forEach(c => c.addEventListener("click", () => { S.bkind = c.dataset.kind; S.bLimit = 40; if (DATA) renderBreaches(); }));
+    $("moreB").addEventListener("click", () => { S.bLimit += 40; renderBreaches(); });
 
     $$(".seg button").forEach(b => b.addEventListener("click", () => {
       S.region = b.dataset.region; store.set("tp-region", S.region);
       $$(".seg button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
-      if (DATA) { renderHero(); fillGroups(); renderRansom(); renderIntel(); }
+      if (DATA) { renderHero(); fillGroups(); renderRansom(); renderBreaches(); renderIntel(); }
     }));
     $$(".seg button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.region === S.region)));
 

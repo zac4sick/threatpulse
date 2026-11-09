@@ -157,6 +157,18 @@ details.more p{margin:6px 0}
 .empty{color:var(--muted);padding:28px 16px;text-align:center;border:1px dashed var(--line);border-radius:var(--radius)}
 .more-btn{display:block;width:100%;margin-top:10px}
 
+/* ---------- breaches */
+.hibp{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 14px;margin:0 0 14px;border-radius:var(--radius);border:1px solid var(--line);background:var(--panel);text-decoration:none;font-size:14px}
+.hibp:hover{border-color:var(--faint)}
+.hibp b{font-weight:650}
+.bitem .t{font-weight:600;text-decoration:none}
+.bitem .t:hover{text-decoration:underline}
+.bitem .row{margin-bottom:3px}
+.bitem small{display:block;margin-top:2px}
+.bitem .rec{font-weight:750;font-variant-numeric:tabular-nums;white-space:nowrap}
+.b.leak{color:var(--p2);border-color:color-mix(in srgb,var(--p2) 60%,var(--line))}
+.b.news{color:var(--info);border-color:color-mix(in srgb,var(--info) 55%,var(--line))}
+
 /* ---------- outages */
 .overall{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:var(--radius);border:1px solid var(--line);background:var(--panel);font-weight:650}
 .overall.ok{border-color:color-mix(in srgb,var(--ok) 40%,var(--line));background:color-mix(in srgb,var(--ok) 8%,var(--panel))}
