@@ -2,7 +2,7 @@ name: Refresh & publish ThreatPulse
 
 on:
   schedule:
-    - cron: "17 * * * *"    # hourly, at :17 to avoid the busy top of the hour
+    - cron: "*/15 * * * *"    # hourly, at :17 to avoid the busy top of the hour
   workflow_dispatch:         # Actions tab -> "Run workflow" for a manual refresh
   push:
     branches: [main]
