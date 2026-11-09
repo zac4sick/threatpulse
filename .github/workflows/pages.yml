@@ -2,7 +2,7 @@ name: Refresh & publish ThreatPulse
 
 on:
   schedule:
-    - cron: "*/15 * * * *"    # every 15 minutes (GitHub may start runs a few minutes late)
+    - cron: "*/15 * * * *"     # every 15 minutes (GitHub may start runs a few minutes late)
   workflow_dispatch:         # Actions tab -> "Run workflow" for a manual refresh
   push:
     branches: [main]
