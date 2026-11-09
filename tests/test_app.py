@@ -67,6 +67,10 @@ def offline(monkeypatch):
     monkeypatch.setattr(pipeline, "http_post", fake_post)
     monkeypatch.setattr(pipeline.time, "sleep", lambda s: None)
 
+    def no_status(url, timeout=15):
+        raise OSError("offline")
+    monkeypatch.setattr(pipeline.uptime, "_get_json", no_status)
+
 
 def test_priority_rules():
     assert pipeline.priority(True, False, 0, 0) == "P1"
@@ -176,3 +180,8 @@ def test_refresh_with_valid_token(client, offline, monkeypatch):
     monkeypatch.setattr(id_token, "verify_oauth2_token", lambda tok, req, audience: {
         "email": "attacker@evil.example", "email_verified": True})
     assert client.post("/tasks/refresh", headers={"Authorization": "Bearer other"}).status_code == 403
+
+
+def test_nice_title():
+    assert pipeline.nice_title("WordPress", "WordPress Core") == "WordPress Core"
+    assert pipeline.nice_title("Fortinet", "FortiOS") == "Fortinet FortiOS"

@@ -15,6 +15,8 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 
+from . import uptime
+
 log = logging.getLogger("threatpulse.pipeline")
 UA = "ThreatPulse/1.0 (open-source threat dashboard)"
 
@@ -215,11 +217,18 @@ def priority(kev: bool, ransomware: bool, epss: float, cvss: float, watched: boo
     return p
 
 
+def nice_title(vendor: str, product: str) -> str:
+    """'WordPress' + 'WordPress Core' -> 'WordPress Core' (no doubled vendor names)."""
+    if product.lower().startswith(vendor.lower()):
+        return product.strip() or vendor
+    return f"{vendor} {product}".strip()
+
+
 def kev_card(k: dict) -> dict:
     notes = [u.strip() for u in (k.get("notes") or "").split(";") if u.strip().startswith("https://")]
     return {
         "id": k["cveID"],
-        "title": f"{k.get('vendorProject', '')} {k.get('product', '')}".strip(),
+        "title": nice_title(k.get("vendorProject", ""), k.get("product", "")),
         "vendor": k.get("vendorProject", ""),
         "product": k.get("product", ""),
         "name": k.get("vulnerabilityName", ""),
@@ -254,7 +263,7 @@ def nvd_card(v: dict) -> dict:
     refs = [r["url"] for r in c.get("references", []) if r.get("url", "").startswith("https://")]
     return {
         "id": c["id"],
-        "title": f"{vendor_h} {product_h}".strip() or c["id"],
+        "title": nice_title(vendor_h, product_h) or c["id"],
         "vendor": vendor_h, "product": product_h, "name": "",
         "summary": clean(desc, 600),
         "fix": "Apply the vendor's security update; see the advisory links.",
@@ -385,6 +394,10 @@ def build(prev: dict | None = None, env: dict | None = None) -> dict:
     top = lambda d, n=8: dict(sorted(d.items(), key=lambda x: -x[1])[:n])  # noqa: E731
     week = (now - timedelta(days=7)).strftime("%Y-%m-%d")
 
+    # Outage detector -------------------------------------------------------
+    outages = _safe("Outage checks", lambda: uptime.check_all(prev.get("outages"), env.get("WATCH_SITES", "")),
+                    prev.get("outages") or {"services": [], "sites": []}, status)
+
     return {
         "generated": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "stats": {
@@ -394,6 +407,8 @@ def build(prev: dict | None = None, env: dict | None = None) -> dict:
             "victims": len(victims),
             "victims_south_asia": sum(1 for v in victims if v.get("south_asia")),
             "iocs_24h": len(iocs),
+            "services_issues": sum(1 for x in outages["services"] if x["state"] in ("down", "degraded")),
+            "sites_down": sum(1 for x in outages["sites"] if x["state"] == "down"),
         },
         "trends": {"kev_by_week": dict(sorted(kev_by_week.items())), "top_groups": top(groups),
                    "top_sectors": top(sectors, 6), "top_malware": top(families)},
@@ -402,6 +417,7 @@ def build(prev: dict | None = None, env: dict | None = None) -> dict:
         "breaches": breaches,
         "iocs": sorted((i for i in iocs if i["confidence"] >= 75), key=lambda i: i["first_seen"], reverse=True)[:40],
         "news": news[:40],
+        "outages": outages,
         "source_status": status,
     }
 
@@ -423,3 +439,12 @@ def telegram_alert(cards: list[dict], token: str, chat_id: str) -> None:
             urllib.request.urlopen(f"https://api.telegram.org/bot{token}/sendMessage", data=body, timeout=20)  # noqa: S310
         except Exception as e:
             log.warning("telegram failed: %s", type(e).__name__)  # never log the token
+
+
+def telegram_text(messages: list[str], token: str, chat_id: str) -> None:
+    for text in messages[:10]:
+        body = urllib.parse.urlencode({"chat_id": chat_id, "text": text, "disable_web_page_preview": "true"}).encode()
+        try:
+            urllib.request.urlopen(f"https://api.telegram.org/bot{token}/sendMessage", data=body, timeout=20)  # noqa: S310
+        except Exception as e:
+            log.warning("telegram failed: %s", type(e).__name__)

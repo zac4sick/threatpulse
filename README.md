@@ -7,6 +7,7 @@ It runs free on GitHub Pages (recommended) or on Google Cloud Run.
 - **Ransomware (dark-web monitoring):** alleged victims posted on leak sites, merged from ransomware.live and RansomLook. A claim seen by both trackers is marked "2 trackers".
 - **Breaches & IOCs:** newly loaded breaches from Have I Been Pwned, plus fresh high-confidence malware indicators from abuse.ch ThreatFox (shown defanged).
 - **Trends:** exploited flaws per week, most active ransomware groups, most targeted sectors, most active malware families.
+- **Outage detector:** live status of 17 major services (Cloudflare, Google Cloud and Workspace, Slack, Zoom, GitHub, OpenAI, Anthropic and more), read from each provider's official status page. It also checks your own sites (`WATCH_SITES`) for uptime, response time and TLS certificate expiry, keeps a 48-hour uptime strip, and sends Telegram alerts when something goes down or recovers.
 - **South Asia view:** one toggle filters leak claims and headlines to Sri Lanka and its neighbours.
 - **My stack:** visitors type the vendors they run. Matching cards get a ★ and move to the top (saved in their browser). The server-side `WATCHLIST` raises those items one priority level and flags them in Telegram alerts.
 
@@ -38,7 +39,7 @@ GitHub Actions runs the refresh every hour and publishes the site to GitHub Page
 
 1. Create a **public** repo named `threatpulse` on GitHub (no README) and upload this folder's contents, including the hidden `.github` folder.
 2. Go to **Settings → Pages → Build and deployment → Source:** choose **GitHub Actions**.
-3. Optional: go to **Settings → Secrets and variables → Actions** and add free keys as **Secrets**: `NVD_API_KEY`, `ABUSECH_AUTH_KEY`, `LLM_API_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`. On the **Variables** tab, add `WATCHLIST` (for example `microsoft,fortinet,wordpress`).
+3. Optional: go to **Settings → Secrets and variables → Actions** and add free keys as **Secrets**: `NVD_API_KEY`, `ABUSECH_AUTH_KEY`, `LLM_API_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`. On the **Variables** tab, add `WATCHLIST` (for example `microsoft,fortinet,wordpress`) and `WATCH_SITES` (the sites to monitor, for example `mysite.lk, shop.example.com`).
 4. Go to **Actions → Refresh & publish ThreatPulse → Run workflow**. About 2 minutes later the site is live at `https://<your-username>.github.io/threatpulse/` and refreshes every hour.
 
 The workflow has read-only access to your code. It reloads the previous `data.json` from the live site instead of committing it every hour, so the repo history stays small.

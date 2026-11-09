@@ -52,13 +52,14 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           WATCHLIST: ${{ vars.WATCHLIST }}
+          WATCH_SITES: ${{ vars.WATCH_SITES }}
         run: python3 -m app.cli
 
       - name: Assemble site
         run: |
           mkdir -p _site/static
           cp static/index.html _site/index.html
-          cp static/app.js static/app.css _site/static/
+          cp static/*.js static/*.css _site/static/
           cp data/data.json _site/data.json
           touch _site/.nojekyll
 

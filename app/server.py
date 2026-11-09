@@ -18,7 +18,7 @@ from pathlib import Path
 
 from flask import Flask, Response, abort, request, send_from_directory
 
-from . import pipeline
+from . import pipeline, uptime
 from .storage import Store
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
@@ -120,8 +120,10 @@ def refresh():
         _cache["at"] = 0.0  # serve fresh data immediately
         alerts = pipeline.new_p1(prev, data)
         token, chat = os.environ.get("TELEGRAM_BOT_TOKEN"), os.environ.get("TELEGRAM_CHAT_ID")
-        if alerts and token and chat:
-            pipeline.telegram_alert(alerts, token, chat)
+        if token and chat:
+            if alerts:
+                pipeline.telegram_alert(alerts, token, chat)
+            pipeline.telegram_text(uptime.changes(prev.get("outages"), data["outages"]), token, chat)
         failed = [k for k, v in data["source_status"].items() if not v["ok"]]
         log.info("refresh done in %.0fs: %d vulns, %d victims, %d new P1, failed=%s",
                  time.time() - started, len(data["vulns"]), len(data["ransomware"]), len(alerts), failed)

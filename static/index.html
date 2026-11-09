@@ -4,69 +4,161 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ThreatPulse — what needs patching right now</title>
-<meta name="description" content="Free live threat-intel dashboard: actively exploited vulnerabilities, ransomware leak-site claims, breaches and how to fix them.">
+<meta name="description" content="Free live threat-intel dashboard: actively exploited vulnerabilities, ransomware leak-site claims, service outages, breaches and how to fix them.">
 <meta name="theme-color" content="#0b0d10">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23ff4d4f'/%3E%3C/svg%3E">
+<script src="static/theme.js"></script>
 <link rel="stylesheet" href="static/app.css">
 <script src="static/app.js" defer></script>
 </head>
 <body>
-<main>
-  <header>
-    <div class="brand"><span class="dot" id="dot"></span>ThreatPulse</div>
-    <div class="region" role="group" aria-label="Region">
-      <button type="button" data-region="global" aria-pressed="true">Global</button>
-      <button type="button" data-region="sa" aria-pressed="false">South Asia</button>
-    </div>
-    <div class="updated" id="updated">loading…</div>
-  </header>
+<a class="skip" href="#content">Skip to content</a>
 
-  <section class="hero" aria-live="polite">
+<div class="top">
+  <div class="wrap">
+    <div class="bar">
+      <a class="brand" href="#vulns"><span class="dot" id="dot" aria-hidden="true"></span>ThreatPulse</a>
+      <span class="updated" id="updated" aria-live="polite">Loading…</span>
+      <div class="seg" role="group" aria-label="Region">
+        <button type="button" data-region="global" aria-pressed="true">Global</button>
+        <button type="button" data-region="sa" aria-pressed="false">South Asia</button>
+      </div>
+      <button class="iconbtn" type="button" id="help" title="What do these terms mean?" aria-label="Help and glossary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/></svg>
+      </button>
+      <button class="iconbtn" type="button" id="theme" title="Switch light / dark" aria-label="Switch light or dark theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 4v16" /><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
+      </button>
+    </div>
+    <nav class="tabs" aria-label="Sections">
+      <a href="#vulns" data-tab="vulns">Vulnerabilities <span class="count" id="cVulns"></span></a>
+      <a href="#ransomware" data-tab="ransomware">Ransomware <span class="count" id="cRansom"></span></a>
+      <a href="#outages" data-tab="outages">Outages <span class="count" id="cOut"></span></a>
+      <a href="#intel" data-tab="intel">Breaches &amp; IOCs</a>
+      <a href="#trends" data-tab="trends">Trends</a>
+    </nav>
+  </div>
+</div>
+
+<main class="wrap" id="content">
+  <div id="banner"></div>
+
+  <section class="hero" aria-labelledby="heroL">
     <div class="n" id="heroN">–</div>
     <div class="lbl" id="heroL">actively exploited flaws added this week</div>
-    <div class="sub">Confirmed in the wild by CISA. Patch these first.</div>
-    <div class="stats">
-      <div><b id="sX">–</b><span>Exploited, last 30 days</span></div>
-      <div><b id="sRw">–</b><span>Used by ransomware</span></div>
-      <div><b id="sV">–</b><span id="sVl">Leak-site claims</span></div>
-      <div><b id="sI">–</b><span>Malicious IOCs, 24 h</span></div>
-    </div>
+    <div class="sub">Confirmed attacked in the wild by CISA. These are the ones to patch first.</div>
   </section>
+  <div id="first"></div>
 
-  <div class="ticker" id="ticker" hidden><div class="track" id="track"></div></div>
+  <div class="tiles">
+    <button class="tile hot" type="button" data-go="vulns" data-chip="kev"><b id="sX">–</b><span>Exploited · 30 days</span></button>
+    <button class="tile hot" type="button" data-go="vulns" data-chip="ransomware"><b id="sRw">–</b><span>Used by ransomware</span></button>
+    <button class="tile warn" type="button" data-go="ransomware"><b id="sV">–</b><span id="sVl">Leak-site claims</span></button>
+    <button class="tile" type="button" data-go="outages" id="tOut"><b id="sO">–</b><span>Service outages now</span></button>
+  </div>
 
-  <nav role="tablist" aria-label="Sections">
-    <button role="tab" type="button" aria-selected="true" data-tab="vulns">Vulnerabilities</button>
-    <button role="tab" type="button" aria-selected="false" data-tab="ransom">Ransomware</button>
-    <button role="tab" type="button" aria-selected="false" data-tab="intel">Breaches &amp; IOCs</button>
-    <button role="tab" type="button" aria-selected="false" data-tab="trends">Trends</button>
-  </nav>
+  <div class="ticker" id="ticker" hidden aria-label="Latest ransomware leak-site claims"><div class="track" id="track"></div></div>
 
-  <section id="vulns" role="tabpanel">
+  <!-- Vulnerabilities -->
+  <section class="panel" id="p-vulns" aria-labelledby="h-vulns">
+    <div class="ph"><div><h2 id="h-vulns">Vulnerabilities</h2><p>Ranked by real-world attacks first, then severity.</p></div></div>
     <div class="tools">
-      <input id="q" type="search" placeholder="Search vendor, product or CVE…" aria-label="Search">
-      <select id="pf" aria-label="Filter">
-        <option value="">All</option><option>P1</option><option>P2</option><option>P3</option>
-        <option value="watch">★ My stack</option>
+      <label class="search"><span class="sr">Search vulnerabilities</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="q" type="search" placeholder="Search vendor, product or CVE" autocomplete="off"><kbd aria-hidden="true">/</kbd>
+      </label>
+      <select id="sort" aria-label="Sort by">
+        <option value="priority">Sort: Priority</option>
+        <option value="newest">Sort: Newest</option>
+        <option value="due">Sort: Deadline</option>
+        <option value="epss">Sort: Exploit chance</option>
       </select>
     </div>
-    <div class="tools">
-      <input id="watch" type="text" placeholder="My stack: e.g. microsoft, fortinet, wordpress" aria-label="Vendors you run" autocomplete="off">
+    <div class="chips" role="group" aria-label="Quick filters">
+      <button class="chip" type="button" data-chip="all" aria-pressed="true">All</button>
+      <button class="chip" type="button" data-chip="P1" aria-pressed="false">P1 · patch now</button>
+      <button class="chip" type="button" data-chip="P2" aria-pressed="false">P2</button>
+      <button class="chip" type="button" data-chip="P3" aria-pressed="false">P3</button>
+      <button class="chip" type="button" data-chip="kev" aria-pressed="false">Exploited</button>
+      <button class="chip" type="button" data-chip="ransomware" aria-pressed="false">Ransomware</button>
+      <button class="chip" type="button" data-chip="watch" aria-pressed="false">★ My stack</button>
     </div>
-    <div id="list"></div>
+    <details class="stack" id="stackBox">
+      <summary>★ <span id="stackLabel">Set your stack</span> — highlight vendors you use</summary>
+      <input class="field" id="watch" type="text" placeholder="e.g. microsoft, fortinet, wordpress, cisco" autocomplete="off" aria-label="Vendors and products you use, comma separated">
+      <p>Saved only in this browser. Matching items get a ★ and move to the top.</p>
+    </details>
+    <div class="meta"><span id="vCount" aria-live="polite"></span><button class="linkbtn" type="button" id="clear" hidden>Clear filters</button></div>
+    <div id="list"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>
+    <button class="btn more-btn" type="button" id="moreV" hidden>Show more</button>
   </section>
-  <section id="ransom" role="tabpanel" hidden></section>
-  <section id="intel" role="tabpanel" hidden></section>
-  <section id="trends" role="tabpanel" hidden></section>
+
+  <!-- Ransomware -->
+  <section class="panel" id="p-ransomware" aria-labelledby="h-ransom" hidden>
+    <div class="ph"><div><h2 id="h-ransom">Ransomware leak sites</h2><p>Organisations that ransomware gangs claim to have hit, from public leak-site trackers.</p></div></div>
+    <p class="note"><b>Alleged.</b> These are criminals' claims, not confirmed breaches. No stolen data is stored or linked.</p>
+    <div class="tools">
+      <label class="search"><span class="sr">Search victims</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="rq" type="search" placeholder="Search organisation, sector or country" autocomplete="off">
+      </label>
+      <select id="rg" aria-label="Filter by group"><option value="">All groups</option></select>
+    </div>
+    <div class="meta"><span id="rCount" aria-live="polite"></span></div>
+    <div id="rlist"></div>
+    <button class="btn more-btn" type="button" id="moreR" hidden>Show more</button>
+  </section>
+
+  <!-- Outages -->
+  <section class="panel" id="p-outages" aria-labelledby="h-out" hidden>
+    <div class="ph"><div><h2 id="h-out">Outage detector</h2><p id="outSub">Official status of major services, plus your own websites.</p></div></div>
+    <div id="overall"></div>
+    <h3 class="sub">Your sites</h3>
+    <div id="sites"></div>
+    <div id="services"></div>
+  </section>
+
+  <!-- Breaches & IOCs -->
+  <section class="panel" id="p-intel" aria-labelledby="h-intel" hidden>
+    <div class="ph"><div><h2 id="h-intel">Breaches &amp; indicators</h2><p>New breach disclosures, fresh malware infrastructure and headlines.</p></div></div>
+    <div id="intel"></div>
+  </section>
+
+  <!-- Trends -->
+  <section class="panel" id="p-trends" aria-labelledby="h-trends" hidden>
+    <div class="ph"><div><h2 id="h-trends">Trends</h2><p>What's rising, from the same live feeds.</p></div></div>
+    <div id="trends"></div>
+  </section>
 
   <footer>
-    <div id="status"></div>
-    <p>Leak-site entries are criminals' <b>claims</b>, not confirmed breaches. IOCs are defanged for safety.
-    AI summaries can be wrong — always check the linked advisory.</p>
-    <p>Data: CISA KEV, FIRST EPSS, NIST NVD, Ransomware.live, RansomLook, abuse.ch ThreatFox, Have I Been Pwned,
-    BleepingComputer, The Hacker News. Regional advisories: <a href="https://www.cert.gov.lk/" rel="noopener noreferrer">Sri Lanka CERT|CC</a>.</p>
+    <div id="status" aria-label="Data source health"></div>
+    <p>Leak-site entries are claims, not confirmed breaches. Indicators are defanged for safety. AI summaries can be wrong; always check the linked advisory. Outage checks run hourly, so very short outages may be missed.</p>
+    <p>Data: CISA KEV, FIRST EPSS, NIST NVD, Ransomware.live, RansomLook, abuse.ch ThreatFox, Have I Been Pwned, official vendor status pages, BleepingComputer, The Hacker News. Regional advisories: <a href="https://www.cert.gov.lk/" rel="noopener noreferrer" target="_blank">Sri Lanka CERT|CC</a>.</p>
   </footer>
 </main>
+
+<button class="btn totop" type="button" id="totop" aria-label="Back to top">↑ Top</button>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<dialog id="glossary" aria-labelledby="gTitle">
+  <div class="dh"><h2 id="gTitle">How to read ThreatPulse</h2><button class="iconbtn" type="button" id="gClose" aria-label="Close">✕</button></div>
+  <div class="db">
+    <dl>
+      <dt><span class="b P1">P1</span> Patch now</dt><dd>Attackers are already using it (CISA confirmed), or ransomware gangs are.</dd>
+      <dt><span class="b P2">P2</span> Patch this week</dt><dd>Not confirmed yet, but EPSS says there's a 50%+ chance of attacks within 30 days.</dd>
+      <dt><span class="b P3">P3</span> Plan it</dt><dd>Serious (CVSS 7+), no sign of attacks yet.</dd>
+      <dt>Exploited (CISA KEV)</dt><dd>CISA's Known Exploited Vulnerabilities list: flaws with evidence of real attacks. "Due" is the deadline US agencies must patch by — a good benchmark for anyone.</dd>
+      <dt>EPSS</dt><dd>Exploit Prediction Scoring System: the probability this flaw is exploited in the next 30 days.</dd>
+      <dt>CVSS</dt><dd>How bad the flaw is in theory, 0–10. High CVSS without attacks is less urgent than a lower score that's being exploited.</dd>
+      <dt>★ My stack</dt><dd>Type the vendors you use. Matching items are starred and shown first. Stored only in your browser.</dd>
+      <dt>Leak-site claim</dt><dd>A ransomware gang posted the organisation on its extortion site. "2 trackers" means two independent trackers saw it.</dd>
+      <dt>IOC</dt><dd>Indicator of compromise: a malicious URL, domain, IP or file hash. Shown defanged (hxxp, [.]) so it can't be clicked by accident — copy into your blocklists.</dd>
+      <dt>Outage detector</dt><dd>Reads each provider's official status page every hour, and checks your own sites for uptime, speed and TLS certificate expiry.</dd>
+      <dt>Keyboard</dt><dd>Press <kbd>/</kbd> to search. Each section has its own link, e.g. <code>#outages</code>, to share.</dd>
+    </dl>
+  </div>
+</dialog>
 </body>
 </html>
