@@ -39,7 +39,7 @@ GitHub Actions runs the refresh every hour and publishes the site to GitHub Page
 
 1. Create a **public** repo named `threatpulse` on GitHub (no README) and upload this folder's contents, including the hidden `.github` folder.
 2. Go to **Settings → Pages → Build and deployment → Source:** choose **GitHub Actions**.
-3. Optional: go to **Settings → Secrets and variables → Actions** and add free keys as **Secrets**: `NVD_API_KEY`, `ABUSECH_AUTH_KEY`, `LLM_API_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`. On the **Variables** tab, add `WATCHLIST` (for example `microsoft,fortinet,wordpress`) and `WATCH_SITES` (the sites to monitor, for example `mysite.lk, shop.example.com`).
+3. Optional: go to **Settings → Secrets and variables → Actions** and add free keys as **Secrets**: `NVD_API_KEY`, `ABUSECH_AUTH_KEY`, `ANTHROPIC_API_KEY` (Claude summaries), `LLM_API_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`. On the **Variables** tab, add `WATCHLIST` (for example `microsoft,fortinet,wordpress`) and `WATCH_SITES` (the sites to monitor, for example `mysite.lk, shop.example.com`).
 4. Go to **Actions → Refresh & publish ThreatPulse → Run workflow**. About 2 minutes later the site is live at `https://<your-username>.github.io/threatpulse/` and refreshes every hour.
 
 The workflow has read-only access to your code. It reloads the previous `data.json` from the live site instead of committing it every hour, so the repo history stays small.

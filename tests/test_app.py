@@ -60,6 +60,13 @@ def offline(monkeypatch):
         raise OSError(f"unexpected url {url}")
 
     def fake_post(url, body, headers=None, timeout=30):
+        if "anthropic" in url:
+            assert headers["x-api-key"] == "sk-test" and headers["anthropic-version"] == "2023-06-01"
+            assert body["model"] == "claude-haiku-5-5" and "untrusted" in body["system"]
+            if "CVE-2026-0002" in body["messages"][0]["content"]:
+                raise OSError("simulated API error")
+            text = '```json\n{"what": "Lets attackers run code on FortiOS.", "who": "Fortinet firewall users.", "prevent": ["Update FortiOS", "Restrict admin access"]}\n```'
+            return json.dumps({"content": [{"type": "text", "text": text}]}).encode()
         assert headers and headers.get("Auth-Key") == "k"
         return json.dumps(THREATFOX).encode()
 
@@ -185,3 +192,19 @@ def test_refresh_with_valid_token(client, offline, monkeypatch):
 def test_nice_title():
     assert pipeline.nice_title("WordPress", "WordPress Core") == "WordPress Core"
     assert pipeline.nice_title("Fortinet", "FortiOS") == "Fortinet FortiOS"
+
+
+def test_claude_summaries(offline):
+    d = pipeline.build({}, {"ANTHROPIC_API_KEY": "sk-test"})
+    kev, nvd = d["vulns"]
+    assert kev["ai"]["what"] == "Lets attackers run code on FortiOS." and kev["ai"]["model"] == "claude-haiku-5-5"
+    assert kev["ai"]["prevent"] == ["Update FortiOS", "Restrict admin access"]
+    assert nvd["ai"] is None                      # failed call -> retried on a later run, never fake text
+    assert d["source_status"]["Claude summaries"]["ok"]
+    again = pipeline.build(d, {"ANTHROPIC_API_KEY": "sk-test"})  # cached: not re-summarised
+    assert again["vulns"][0]["ai"] == kev["ai"]
+
+
+def test_no_ai_without_key(offline):
+    d = pipeline.build({}, {})
+    assert all(v["ai"] is None for v in d["vulns"]) and "Claude summaries" not in d["source_status"]

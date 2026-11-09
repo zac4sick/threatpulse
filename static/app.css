@@ -129,6 +129,11 @@ h3.sub{font-size:13px;letter-spacing:.07em;text-transform:uppercase;color:var(--
 .id{font-family:var(--mono);color:var(--muted);margin-left:auto;font-size:12px}
 .card h4{margin:8px 0 3px;font-size:16.5px;line-height:1.35}
 .card .sum{margin:4px 0}
+.ai{margin:8px 0 2px;padding:10px 12px;border-radius:10px;background:var(--panel2);border:1px solid var(--line)}
+.ai-h{font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;cursor:help;width:max-content}
+.ai p{margin:0}
+.ai p.who{margin-top:5px;font-size:13.5px;color:var(--muted)}
+.ai p.who b{color:var(--ink);font-weight:600}
 .fix{margin:8px 0 0;font-size:14px;color:var(--muted)}
 .fix b{color:var(--ink)}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}

@@ -89,9 +89,8 @@
     const ai = v.ai || {};
     const advisory = (v.links || []).map(safeUrl).find(Boolean);
     const more = el("details", { class: "more" }, el("summary", {}, "Details, sources & news"),
-      ai.who && el("p", {}, el("b", {}, "Who's at risk: "), ai.who),
       ai.prevent && ai.prevent.length > 0 && [el("p", {}, el("b", {}, "How to prevent")), el("ul", {}, ai.prevent.map(s => el("li", {}, s)))],
-      ai.what && v.summary && el("p", { class: "fix" }, el("b", {}, "Technical: "), v.summary),
+      ai.what && v.summary && el("p", { class: "fix" }, el("b", {}, "Official description: "), v.summary),
       v.name && el("p", { class: "fix" }, v.name),
       v.fix_full && el("p", { class: "fix" }, el("b", {}, "CISA required action: "), v.fix_full),
       el("ul", {},
@@ -108,7 +107,12 @@
         dueBadge(v),
         el("span", { class: "id" }, v.id)),
       el("h4", {}, v.title),
-      el("p", { class: "sum" }, ai.what || v.summary),
+      ai.what ? el("div", { class: "ai" },
+        el("div", { class: "ai-h", title: `Written by ${ai.model || "an AI model"} from the official advisory text. Can be wrong — check the advisory.` },
+          /claude/i.test(ai.model || "") ? "✦ Claude summary" : "✦ AI summary"),
+        el("p", {}, ai.what),
+        ai.who && el("p", { class: "who" }, el("b", {}, "At risk: "), ai.who))
+        : el("p", { class: "sum" }, v.summary),
       el("p", { class: "fix" }, el("b", {}, "Fix: "), v.fix, v.date ? ` · Added ${relDay(v.date)}` : ""),
       el("div", { class: "actions" },
         advisory && ext(advisory, "Open advisory ↗", "btn"),
