@@ -373,7 +373,7 @@
     const age = (Date.now() - Date.parse(DATA.generated)) / 36e5;
     const failed = Object.entries(DATA.source_status || {}).filter(([, v]) => !v.ok).map(([k]) => k);
     const msgs = [];
-    if (age > 3) msgs.push(el("div", { class: "banner warn", role: "status" }, `Data is ${Math.round(age)} hours old — the hourly refresh may be paused. Numbers below may be out of date.`));
+    if (age > 3) msgs.push(el("div", { class: "banner warn", role: "status" }, `Data is ${Math.round(age)} hours old — the scheduled refresh may be paused. Numbers below may be out of date.`));
     if (failed.length) msgs.push(el("div", { class: "banner", role: "status" }, `Some feeds didn't respond on the last refresh (${failed.join(", ")}). Showing their last good data.`));
     $("banner").replaceChildren(...msgs);
     $("status").replaceChildren(...Object.entries(DATA.source_status || {}).map(([k, v]) =>
@@ -438,6 +438,7 @@
       root.dataset.theme = dark ? "light" : "dark"; store.set("tp-theme", root.dataset.theme);
       toast(dark ? "Light mode" : "Dark mode");
     });
+    $("refresh").addEventListener("click", () => load(true));
     const dlg = $("glossary");
     $("help").addEventListener("click", () => (dlg.showModal ? dlg.showModal() : dlg.setAttribute("open", "")));
     $("gClose").addEventListener("click", () => dlg.close());
@@ -455,7 +456,9 @@
   }
 
   // ------------------------------------------------------------------ data
-  async function load() {
+  async function load(manual) {
+    const btn = $("refresh"), before = DATA && DATA.generated;
+    if (manual) { btn.disabled = true; btn.classList.add("spin"); }
     try {
       const inline = document.getElementById("tp-data");  // static preview build only
       let r = inline ? null : await fetch("data.json", { cache: "no-cache" });
@@ -466,9 +469,13 @@
       DATA.vulns = DATA.vulns || []; DATA.ransomware = DATA.ransomware || []; DATA.breaches = DATA.breaches || [];
       DATA.iocs = DATA.iocs || []; DATA.news = DATA.news || []; DATA.trends = DATA.trends || {};
       renderAll();
+      if (manual) toast(before && before === DATA.generated ? `Already up to date · data from ${ago(DATA.generated)}` : `Updated · data from ${ago(DATA.generated)}`);
     } catch (e) {
       $("updated").textContent = "Data unavailable";
-      $("list").replaceChildren(el("div", { class: "empty" }, "Couldn't load the latest data. Try refreshing in a minute."));
+      if (manual) toast("Couldn't reach the server — try again shortly");
+      else $("list").replaceChildren(el("div", { class: "empty" }, "Couldn't load the latest data. Try refreshing in a minute."));
+    } finally {
+      if (manual) setTimeout(() => { btn.disabled = false; btn.classList.remove("spin"); }, 400);
     }
   }
 

@@ -35,6 +35,9 @@ button{font:inherit;color:inherit}
 .iconbtn{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--panel);cursor:pointer;color:var(--muted)}
 .iconbtn:hover{color:var(--ink);border-color:var(--faint)}
 .iconbtn svg{width:17px;height:17px}
+.iconbtn.spin svg{animation:spin .8s linear infinite}
+.iconbtn:disabled{cursor:progress}
+@keyframes spin{to{transform:rotate(360deg)}}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:2px;background:var(--panel)}
 .seg button{background:none;border:0;color:var(--muted);padding:4px 11px;border-radius:999px;cursor:pointer;font-size:13px;white-space:nowrap}
 .seg button[aria-pressed=true]{background:var(--ink);color:var(--bg);font-weight:650}
@@ -232,6 +235,9 @@ footer{border-top:1px solid var(--line);margin-top:40px;padding:20px 0 40px;font
 
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}.ticker .track{padding-left:0}}
 @media (max-width:640px){
+  .bar{gap:6px}.brand{font-size:15px;gap:7px}
+  .iconbtn{width:30px;height:30px;border-radius:8px}.iconbtn svg{width:15px;height:15px}
+  .seg button{padding:4px 8px;font-size:12px}
   .tickhead small{display:none}
   .hero{grid-template-columns:1fr}.hero .n{font-size:76px;grid-row:auto}
   .tiles{grid-template-columns:repeat(2,1fr)}
@@ -240,3 +246,4 @@ footer{border-top:1px solid var(--line);margin-top:40px;padding:20px 0 40px;font
   .hbar{grid-template-columns:100px 1fr 36px}
   .v{flex-direction:column;gap:2px}.v .r{text-align:left}
 }
+@media (max-width:380px){.wrap{padding:0 12px}.seg button{padding:4px 6px}}
