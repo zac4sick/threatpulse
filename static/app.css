@@ -75,7 +75,12 @@ nav.tabs a[aria-current=page]{color:var(--ink);border-color:var(--ink)}
 .tile span{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
 .tile.hot b{color:var(--p1)}.tile.warn b{color:var(--p2)}.tile.good b{color:var(--ok)}
 
-.ticker{overflow:hidden;white-space:nowrap;border-block:1px solid var(--line);padding:8px 0;font-size:13px;color:var(--muted);margin:18px 0 4px;mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+.tickhead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:22px 0 6px;font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.tickhead small{font-weight:500;letter-spacing:.02em;text-transform:none;color:var(--faint);font-size:12px}
+.tickhead a{color:var(--muted);text-decoration:none;letter-spacing:.02em;text-transform:none;font-size:12.5px;font-weight:600;white-space:nowrap}
+.tickhead a:hover{color:var(--ink);text-decoration:underline}
+.tickhead .live{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--p2);margin-right:8px;vertical-align:1px}
+.ticker{overflow:hidden;white-space:nowrap;border-block:1px solid var(--line);padding:8px 0;font-size:13px;color:var(--muted);margin:0 0 4px;mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
 .ticker .track{display:inline-block;padding-left:100%;animation:scroll 140s linear infinite}
 .ticker:hover .track,.ticker:focus-within .track{animation-play-state:paused}
 .ticker em{color:var(--p2);font-style:normal;font-weight:650;margin-right:6px}
@@ -210,6 +215,7 @@ footer{border-top:1px solid var(--line);margin-top:40px;padding:20px 0 40px;font
 
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}.ticker .track{padding-left:0}}
 @media (max-width:640px){
+  .tickhead small{display:none}
   .hero{grid-template-columns:1fr}.hero .n{font-size:76px;grid-row:auto}
   .tiles{grid-template-columns:repeat(2,1fr)}
   .updated{display:none}
