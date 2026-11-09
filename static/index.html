@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ThreatPulse — what needs patching right now</title>
+<meta name="description" content="Free live threat-intel dashboard: actively exploited vulnerabilities, ransomware leak-site claims, breaches and how to fix them.">
+<meta name="theme-color" content="#0b0d10">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<link rel="stylesheet" href="static/app.css">
+<script src="static/app.js" defer></script>
+</head>
+<body>
+<main>
+  <header>
+    <div class="brand"><span class="dot" id="dot"></span>ThreatPulse</div>
+    <div class="region" role="group" aria-label="Region">
+      <button type="button" data-region="global" aria-pressed="true">Global</button>
+      <button type="button" data-region="sa" aria-pressed="false">South Asia</button>
+    </div>
+    <div class="updated" id="updated">loading…</div>
+  </header>
+
+  <section class="hero" aria-live="polite">
+    <div class="n" id="heroN">–</div>
+    <div class="lbl" id="heroL">actively exploited flaws added this week</div>
+    <div class="sub">Confirmed in the wild by CISA. Patch these first.</div>
+    <div class="stats">
+      <div><b id="sX">–</b><span>Exploited, last 30 days</span></div>
+      <div><b id="sRw">–</b><span>Used by ransomware</span></div>
+      <div><b id="sV">–</b><span id="sVl">Leak-site claims</span></div>
+      <div><b id="sI">–</b><span>Malicious IOCs, 24 h</span></div>
+    </div>
+  </section>
+
+  <div class="ticker" id="ticker" hidden><div class="track" id="track"></div></div>
+
+  <nav role="tablist" aria-label="Sections">
+    <button role="tab" type="button" aria-selected="true" data-tab="vulns">Vulnerabilities</button>
+    <button role="tab" type="button" aria-selected="false" data-tab="ransom">Ransomware</button>
+    <button role="tab" type="button" aria-selected="false" data-tab="intel">Breaches &amp; IOCs</button>
+    <button role="tab" type="button" aria-selected="false" data-tab="trends">Trends</button>
+  </nav>
+
+  <section id="vulns" role="tabpanel">
+    <div class="tools">
+      <input id="q" type="search" placeholder="Search vendor, product or CVE…" aria-label="Search">
+      <select id="pf" aria-label="Filter">
+        <option value="">All</option><option>P1</option><option>P2</option><option>P3</option>
+        <option value="watch">★ My stack</option>
+      </select>
+    </div>
+    <div class="tools">
+      <input id="watch" type="text" placeholder="My stack: e.g. microsoft, fortinet, wordpress" aria-label="Vendors you run" autocomplete="off">
+    </div>
+    <div id="list"></div>
+  </section>
+  <section id="ransom" role="tabpanel" hidden></section>
+  <section id="intel" role="tabpanel" hidden></section>
+  <section id="trends" role="tabpanel" hidden></section>
+
+  <footer>
+    <div id="status"></div>
+    <p>Leak-site entries are criminals' <b>claims</b>, not confirmed breaches. IOCs are defanged for safety.
+    AI summaries can be wrong — always check the linked advisory.</p>
+    <p>Data: CISA KEV, FIRST EPSS, NIST NVD, Ransomware.live, RansomLook, abuse.ch ThreatFox, Have I Been Pwned,
+    BleepingComputer, The Hacker News. Regional advisories: <a href="https://www.cert.gov.lk/" rel="noopener noreferrer">Sri Lanka CERT|CC</a>.</p>
+  </footer>
+</main>
+</body>
+</html>

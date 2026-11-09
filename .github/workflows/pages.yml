@@ -1,0 +1,70 @@
+name: Refresh & publish ThreatPulse
+
+on:
+  schedule:
+    - cron: "17 * * * *"    # hourly, at :17 to avoid the busy top of the hour
+  workflow_dispatch:         # Actions tab -> "Run workflow" for a manual refresh
+  push:
+    branches: [main]
+
+# Least privilege: read the code, publish Pages. No write access to the repo is needed,
+# because the previous data is read back from the live site instead of being committed.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Load previous data from the live site (keeps AI summaries + fallback data)
+        run: |
+          mkdir -p data
+          curl -fsS "${{ steps.pages.outputs.base_url }}/data.json" -o data/data.json \
+            || echo "no previous data (first run)"
+
+      - name: Fetch, score and summarise
+        env:
+          DATA_PATH: data/data.json
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+          ABUSECH_AUTH_KEY: ${{ secrets.ABUSECH_AUTH_KEY }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_API_URL: ${{ vars.LLM_API_URL }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          WATCHLIST: ${{ vars.WATCHLIST }}
+        run: python3 -m app.cli
+
+      - name: Assemble site
+        run: |
+          mkdir -p _site/static
+          cp static/index.html _site/index.html
+          cp static/app.js static/app.css _site/static/
+          cp data/data.json _site/data.json
+          touch _site/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
