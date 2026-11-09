@@ -323,8 +323,9 @@
     const co = $("cOut"); co.textContent = DATA.outages ? outN : ""; co.className = outN ? "count hot" : "count"; co.hidden = !DATA.outages;
 
     const list = victims().slice(0, 25);
-    $("ticker").hidden = $("tickhead").hidden = !list.length;
-    $("tickLabel").textContent = S.region === "sa" ? "Latest ransomware claims · South Asia" : "Latest ransomware leak-site claims";
+    $("ticker").hidden = !list.length;
+    if ($("tickhead")) $("tickhead").hidden = !list.length;
+    if ($("tickLabel")) $("tickLabel").textContent = S.region === "sa" ? "Latest ransomware claims · South Asia" : "Latest ransomware leak-site claims";
     $("track").replaceChildren(...list.map(r => el("span", {}, el("em", {}, r.group),
       `${r.victim}${r.country ? " (" + r.country + ")" : ""}   ·   `)));
   }

@@ -61,6 +61,9 @@ jobs:
           cp static/index.html _site/index.html
           cp static/*.js static/*.css _site/static/
           cp data/data.json _site/data.json
+          # Cache-busting: tie CSS/JS URLs to this commit so a cached page never mixes old and new files
+          V="${GITHUB_SHA::8}"
+          sed -i "s|static/app.css\"|static/app.css?v=$V\"|; s|static/app.js\"|static/app.js?v=$V\"|; s|static/theme.js\"|static/theme.js?v=$V\"|" _site/index.html
           touch _site/.nojekyll
 
       - uses: actions/upload-pages-artifact@v3
