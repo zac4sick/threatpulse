@@ -105,6 +105,107 @@ def parse_google(data: list, base: str) -> dict:
             "incident": {"title": _clip(i.get("external_desc")), "link": link}}
 
 
+# --------------------------------------------------------------------------- Microsoft
+# Microsoft has no Statuspage API. Its public page status.cloud.microsoft reads these no-login JSON files:
+#   /api/posts/mac           -> one post: broad Microsoft 365 (work & school) incidents
+#   /api/posts/m365Consumer  -> list of consumer workloads (Outlook.com, Teams Free, OneDrive, ...)
+#   /api/posts/azure         -> one post: broad Azure incidents
+# Tenant-specific Microsoft 365 issues appear only in each organisation's admin center (needs sign-in).
+MS_BASE = "https://status.cloud.microsoft"
+MS_OK = {"available", "operational", "service restored", "resolved", "false positive",
+         "post-incident report published", "service operational"}
+# business tiles: (display name, words in the work & school incident text that mean it is affected)
+MS_BUSINESS = [
+    ("Outlook & Exchange (work)", ("exchange online", "outlook")),
+    ("Microsoft Teams (work)", ("microsoft teams", "teams:")),
+]
+# consumer tiles: (display name, workload name in the feed, words that mean the umbrella incident affects it)
+MS_CONSUMER = [
+    ("Outlook.com", "Outlook.com", ("outlook",)),
+    ("Microsoft Teams (free)", "TeamsforLife", ("teams",)),
+    ("OneDrive", "OneDriveConsumer", ("onedrive",)),
+    ("Office for the web", "OfficeOnlineConsumer", ("for the web", "office online")),
+]
+
+
+def ms_state(status: str | None) -> str:
+    s = (status or "").strip().lower()
+    if s in MS_OK:
+        return "up"
+    if "maintenance" in s:
+        return "maintenance"
+    if "interruption" in s or "outage" in s:
+        return "down"
+    return "degraded" if s else "unknown"
+
+
+def _ms_text(html: str | None, n: int = 160) -> str:
+    import re as _re
+    return _clip(_re.sub(r"<[^>]+>", " ", html or ""), n)
+
+
+def parse_microsoft(mac: dict | None, consumer: list | None, azure: dict | None) -> list[dict]:
+    cat, out = "Microsoft", []
+
+    def tile(name, state, detail, title, page):
+        return {"name": name, "cat": cat, "page": page, "state": state, "detail": detail,
+                "incident": {"title": title, "link": page} if title and state != "up" else None}
+
+    if mac is not None:
+        st = ms_state(mac.get("Status"))
+        out.append(tile("Microsoft 365 (work & school)", st,
+                        "No broad incidents posted" if st == "up" else _clip(mac.get("Status")),
+                        _clip(mac.get("Title")), MS_BASE))
+        text = _ms_text(mac.get("Message"), 20000).lower()
+        for name, words in MS_BUSINESS:
+            hit = st != "up" and any(w in text for w in words)
+            out.append(tile(name, st if hit else "up",
+                            _clip(mac.get("Status")) if hit else "Not named in any broad incident",
+                            _clip(mac.get("Title")) if hit else "", MS_BASE))
+    else:
+        for name in ["Microsoft 365 (work & school)"] + [n for n, _ in MS_BUSINESS]:
+            out.append(tile(name, "unknown", "Status feed unreachable", "", MS_BASE))
+
+    if consumer is not None:
+        rows = {r.get("ServiceWorkloadName"): r for r in consumer if isinstance(r, dict)}
+        umbrella = rows.get("M365Consumer") or {}
+        u_state = ms_state(umbrella.get("Status"))
+        u_text = f"{umbrella.get('Title', '')} {umbrella.get('Message', '')}".lower()
+        for name, key, words in MS_CONSUMER:
+            r = rows.get(key)
+            st = ms_state(r.get("Status")) if r else "unknown"
+            title = _clip(r.get("Title")) if r else ""
+            # an umbrella "Microsoft 365 (Consumer)" incident that names this service counts for it too
+            if u_state != "up" and any(w in u_text for w in words):
+                rank = {"up": 0, "unknown": 0, "maintenance": 1, "degraded": 2, "down": 3}
+                if rank[u_state] > rank.get(st, 0):
+                    st = u_state
+                title = title or _clip(umbrella.get("Title"))
+            detail = "All systems operational" if st == "up" else (_clip(r.get("Status")) if r and ms_state(r.get("Status")) != "up" else _clip(umbrella.get("Status")))
+            out.append(tile(name, st, detail if r else "Not listed in feed", title, MS_BASE))
+    else:
+        for name, _, _ in MS_CONSUMER:
+            out.append(tile(name, "unknown", "Status feed unreachable", "", MS_BASE))
+
+    if azure is not None:
+        st = ms_state(azure.get("Status"))
+        out.append(tile("Azure", st, _ms_text(azure.get("Message")) or "No broad incidents posted",
+                        _clip(azure.get("Title")) or _ms_text(azure.get("Message")), "https://azure.status.microsoft/"))
+    else:
+        out.append(tile("Azure", "unknown", "Status feed unreachable", "", "https://azure.status.microsoft/"))
+    return out
+
+
+def check_microsoft() -> list[dict]:
+    def get(path):
+        try:
+            return _get_json(f"{MS_BASE}/api/posts/{path}")
+        except Exception as e:
+            log.warning("Microsoft status %s failed: %s", path, type(e).__name__)
+            return None
+    return parse_microsoft(get("mac"), get("m365Consumer"), get("azure"))
+
+
 def check_service(svc: dict) -> dict:
     base = svc["base"]
     try:
@@ -201,8 +302,10 @@ def check_all(prev: dict | None, sites_raw: str = "") -> dict:
     prev_site = {s["url"]: s for s in prev.get("sites", [])}
     sites = parse_sites(sites_raw)
     with ThreadPoolExecutor(max_workers=12) as pool:
+        ms = pool.submit(check_microsoft)
         svc = list(pool.map(check_service, SERVICES))
         st = list(pool.map(check_site, sites))
+        svc = ms.result() + svc  # Microsoft first: the most-used services for most readers
     return {
         "checked": now,
         "services": [_with_history(s, prev_svc.get(s["name"]), now) for s in svc],

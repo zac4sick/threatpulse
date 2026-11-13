@@ -74,7 +74,7 @@ def test_site_checks(local_server):
 def test_history_uptime_and_alerts(local_server, monkeypatch):
     monkeypatch.setattr(uptime, "_get_json", lambda u, timeout=15: STATUSPAGE_OK)
     first = uptime.check_all({}, local_server + "/")
-    assert first["sites"][0]["uptime"] == 100.0 and len(first["services"]) == len(uptime.SERVICES)
+    assert first["sites"][0]["uptime"] == 100.0 and len(first["services"]) == len(uptime.SERVICES) + 8
     assert uptime.changes({}, first) == []                       # no alerts on the very first run
     first["sites"][0]["url"] = local_server + "/broken"            # pretend the site was configured as /broken
     down = uptime.check_all(first, local_server + "/broken")
@@ -84,3 +84,40 @@ def test_history_uptime_and_alerts(local_server, monkeypatch):
     monkeypatch.setattr(uptime, "_get_json", lambda u, timeout=15: STATUSPAGE_MAJOR)
     out = uptime.check_all(down, local_server + "/broken")
     assert any(m.startswith("OUTAGE: Cloudflare") for m in uptime.changes(down, out))
+
+
+# Shapes captured from status.cloud.microsoft on 2026-11-13 during a real incident (messages abridged)
+MS_MAC = {"Id": "x", "Title": "Users may be unable to connect to multiple Microsoft 365 services",
+          "Message": "<div>- Exchange Online: Users may be unable to access their mailbox using Outlook on the web</div>",
+          "Status": "Service degradation"}
+MS_CONSUMER = [
+    {"ServiceWorkloadName": "M365Consumer", "Title": "Users may be unable to access several Microsoft 365 services",
+     "Message": "This issue impacts Outlook.com, OneDrive, OneNote, To Do, Teams, and Microsoft 365 for the web",
+     "Status": "Service degradation"},
+    {"ServiceWorkloadName": "Outlook.com", "Title": "", "Message": "", "Status": "Operational"},
+    {"ServiceWorkloadName": "TeamsforLife", "Title": "", "Message": "", "Status": "Operational"},
+    {"ServiceWorkloadName": "OneDriveConsumer", "Title": "", "Message": "", "Status": "Operational"},
+    {"ServiceWorkloadName": "OfficeOnlineConsumer", "Title": "", "Message": "", "Status": "Operational"},
+]
+MS_AZURE = {"Title": None, "Message": "No Azure issues detected at this time.", "Status": "Available"}
+
+
+def test_microsoft_during_incident():
+    t = {x["name"]: x for x in uptime.parse_microsoft(MS_MAC, MS_CONSUMER, MS_AZURE)}
+    assert t["Microsoft 365 (work & school)"]["state"] == "degraded"
+    assert t["Outlook & Exchange (work)"]["state"] == "degraded"       # named in the business incident
+    assert t["Microsoft Teams (work)"]["state"] == "up"                 # not named -> stays up
+    for n in ("Outlook.com", "Microsoft Teams (free)", "OneDrive", "Office for the web"):
+        assert t[n]["state"] == "degraded" and t[n]["incident"]["link"] == "https://status.cloud.microsoft"
+    assert t["Azure"]["state"] == "up" and t["Azure"]["incident"] is None
+    assert all(x["cat"] == "Microsoft" for x in t.values())
+
+
+def test_microsoft_states_and_unreachable():
+    assert uptime.ms_state("Service restored") == "up" and uptime.ms_state("Available") == "up"
+    assert uptime.ms_state("Service interruption") == "down" and uptime.ms_state("Investigating") == "degraded"
+    tiles = uptime.parse_microsoft(None, None, None)
+    assert len(tiles) == 8 and all(x["state"] == "unknown" for x in tiles)
+    ok = uptime.parse_microsoft({"Status": "Available", "Title": "", "Message": ""},
+                                [dict(r, Status="Operational") for r in MS_CONSUMER], MS_AZURE)
+    assert all(x["state"] == "up" for x in ok)
