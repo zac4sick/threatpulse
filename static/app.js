@@ -272,7 +272,9 @@
     const cats = {};
     o.services.forEach(s => (cats[s.cat] = cats[s.cat] || []).push(s));
     const rank = { down: 0, degraded: 1, maintenance: 2, unknown: 4, up: 3 };
-    $("services").replaceChildren(...Object.entries(cats).map(([c, list]) => [
+    const CAT_ORDER = ["Security tools", "Microsoft", "Cloud & hosting", "Work & collaboration", "Developer", "Social & AI"];
+    const catRank = c => (CAT_ORDER.indexOf(c) + 1) || 99;
+    $("services").replaceChildren(...Object.entries(cats).sort((a, b) => catRank(a[0]) - catRank(b[0])).map(([c, list]) => [
       el("h3", { class: "sub" }, c),
       el("div", { class: "grid" }, list.sort((a, b) => rank[a.state] - rank[b.state]).map(svcTile))]).flat());
   }

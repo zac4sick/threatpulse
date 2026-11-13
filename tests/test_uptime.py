@@ -1,5 +1,6 @@
 """Outage detector tests: status-page parsers on documented response shapes, and real local HTTP checks."""
 import http.server
+import json
 import threading
 
 import pytest
@@ -73,8 +74,9 @@ def test_site_checks(local_server):
 
 def test_history_uptime_and_alerts(local_server, monkeypatch):
     monkeypatch.setattr(uptime, "_get_json", lambda u, timeout=15: STATUSPAGE_OK)
+    monkeypatch.setattr(uptime, "SERVICES", [x for x in uptime.SERVICES if x["kind"] != "http"])  # no internet in tests
     first = uptime.check_all({}, local_server + "/")
-    assert first["sites"][0]["uptime"] == 100.0 and len(first["services"]) == len(uptime.SERVICES) + 8
+    assert first["sites"][0]["uptime"] == 100.0 and len(first["services"]) == len(uptime.SERVICES) + 9
     assert uptime.changes({}, first) == []                       # no alerts on the very first run
     first["sites"][0]["url"] = local_server + "/broken"            # pretend the site was configured as /broken
     down = uptime.check_all(first, local_server + "/broken")
@@ -110,14 +112,59 @@ def test_microsoft_during_incident():
     for n in ("Outlook.com", "Microsoft Teams (free)", "OneDrive", "Office for the web"):
         assert t[n]["state"] == "degraded" and t[n]["incident"]["link"] == "https://status.cloud.microsoft"
     assert t["Azure"]["state"] == "up" and t["Azure"]["incident"] is None
-    assert all(x["cat"] == "Microsoft" for x in t.values())
+    assert t["Microsoft Defender XDR (365)"]["state"] == "up"            # not named in this incident
+    assert all(x["cat"] == ("Security tools" if "Defender" in n else "Microsoft") for n, x in t.items())
 
 
 def test_microsoft_states_and_unreachable():
     assert uptime.ms_state("Service restored") == "up" and uptime.ms_state("Available") == "up"
     assert uptime.ms_state("Service interruption") == "down" and uptime.ms_state("Investigating") == "degraded"
     tiles = uptime.parse_microsoft(None, None, None)
-    assert len(tiles) == 8 and all(x["state"] == "unknown" for x in tiles)
+    assert len(tiles) == 9 and all(x["state"] == "unknown" for x in tiles)
     ok = uptime.parse_microsoft({"Status": "Available", "Title": "", "Message": ""},
                                 [dict(r, Status="Operational") for r in MS_CONSUMER], MS_AZURE)
     assert all(x["state"] == "up" for x in ok)
+
+
+# Shape of status.paloaltonetworks.com summary.json (574 components; Prisma Cloud incident active, XSOAR fine)
+PANW = {
+    "status": {"indicator": "minor", "description": "Partially Degraded Service"},
+    "components": [
+        {"id": "g6", "name": "Cortex XSOAR 6.x", "group": True, "status": "operational"},
+        {"id": "g8", "name": "Cortex XSOAR 8.x", "group": True, "status": "operational"},
+        {"id": "a", "name": "United States - East", "group": False, "group_id": "g6", "status": "operational"},
+        {"id": "b", "name": "Australia", "group": False, "group_id": "g8", "status": "operational"},
+        {"id": "c", "name": "Germany", "group": False, "group_id": "g8", "status": "operational"},
+        {"id": "p", "name": "Americas - US - app.prismacloud.io", "group": False, "group_id": "gp", "status": "partial_outage"},
+    ],
+    "incidents": [{"name": "Prisma Cloud: Alert Manual and Automated Remediation is unavailable", "status": "identified",
+                   "shortlink": "https://stspg.io/x", "components": [{"id": "p", "name": "Americas - US - app.prismacloud.io"}]}],
+    "scheduled_maintenances": [],
+}
+
+
+def test_component_filter_ignores_other_products():
+    r = uptime.parse_statuspage_filtered(PANW, "https://status.paloaltonetworks.com", r"cortex xsoar")
+    assert r["state"] == "up" and r["incident"] is None and r["detail"] == "All 3 regions operational"
+    bad = json.loads(json.dumps(PANW))
+    bad["components"][4]["status"] = "major_outage"
+    bad["incidents"].append({"name": "Cortex XSOAR 8.x: Germany unavailable", "status": "investigating",
+                             "shortlink": "https://stspg.io/y", "components": [{"id": "c", "name": "Germany"}]})
+    r = uptime.parse_statuspage_filtered(bad, "https://s", r"cortex xsoar")
+    assert r["state"] == "down" and r["incident"]["link"] == "https://stspg.io/y" and "Germany" in r["detail"]
+    maint = json.loads(json.dumps(PANW))
+    maint["scheduled_maintenances"] = [{"name": "Scheduled Maintenance for Cortex XDR / XSIAM / XSOAR 8", "status": "in_progress",
+                                        "components": [{"id": "b", "name": "Australia"}], "shortlink": "https://stspg.io/m"}]
+    assert uptime.parse_statuspage_filtered(maint, "https://s", r"cortex xsoar")["state"] == "maintenance"
+    assert uptime.parse_statuspage_filtered(PANW, "https://s", r"no such product")["state"] == "unknown"
+
+
+def test_http_kind_and_defender(local_server, monkeypatch):
+    svc = {"name": "VirusTotal", "cat": "Security tools", "kind": "http", "base": local_server + "/", "note": "Reachability check"}
+    r = uptime.check_service(svc)
+    assert r["state"] == "up" and r["detail"].startswith("Reachability check · HTTP 200")
+    assert uptime.check_service(dict(svc, base=local_server + "/broken"))["state"] == "down"
+    mac = {"Status": "Service degradation", "Title": "Defender portal issue",
+           "Message": "<div>- Microsoft Defender XDR: Admins may be unable to view alerts</div>"}
+    t = {x["name"]: x for x in uptime.parse_microsoft(mac, None, None)}
+    assert t["Microsoft Defender XDR (365)"]["state"] == "degraded" and t["Microsoft Defender XDR (365)"]["cat"] == "Security tools"

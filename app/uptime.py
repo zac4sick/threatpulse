@@ -29,6 +29,16 @@ MAX_SITES = 20
 
 # kind: "statuspage" = Atlassian Statuspage-compatible /api/v2/summary.json
 SERVICES = [
+    # Security tools ("match" = only components/incidents whose name or group matches, not the whole vendor page)
+    {"name": "Cortex XSOAR", "cat": "Security tools", "kind": "statuspage", "base": "https://status.paloaltonetworks.com",
+     "match": r"cortex xsoar"},
+    {"name": "SentinelOne", "cat": "Security tools", "kind": "statuspage", "base": "https://status.sentinelone.com"},
+    {"name": "Proofpoint Security Awareness", "cat": "Security tools", "kind": "statuspage",
+     "base": "https://status.proofpointsa.com"},
+    {"name": "VirusTotal", "cat": "Security tools", "kind": "http", "base": "https://www.virustotal.com/gui/home",
+     "note": "No official status page; reachability check"},
+    {"name": "ServiceNow (Now Support)", "cat": "Security tools", "kind": "http", "base": "https://support.servicenow.com/",
+     "note": "No public status page; checks ServiceNow's support portal. Add your own instance to WATCH_SITES"},
     # Cloud & hosting
     {"name": "Cloudflare", "cat": "Cloud & hosting", "kind": "statuspage", "base": "https://www.cloudflarestatus.com"},
     {"name": "Google Cloud", "cat": "Cloud & hosting", "kind": "google", "base": "https://status.cloud.google.com",
@@ -84,6 +94,42 @@ def parse_statuspage(data: dict, base: str) -> dict:
     }
 
 
+COMPONENT = {"operational": "up", "degraded_performance": "degraded", "partial_outage": "degraded",
+             "major_outage": "down", "under_maintenance": "maintenance"}
+RANK = {"up": 0, "unknown": 0, "maintenance": 1, "degraded": 2, "down": 3}
+
+
+def parse_statuspage_filtered(data: dict, base: str, match: str) -> dict:
+    """Status of only the components (or component groups) whose name matches `match`."""
+    import re as _re
+    rx = _re.compile(match, _re.I)
+    comps = data.get("components") or []
+    by_id = {c.get("id"): c for c in comps}
+    mine = [c for c in comps if not c.get("group") and (rx.search(c.get("name", "")) or
+            rx.search((by_id.get(c.get("group_id")) or {}).get("name", "")))]
+    if not mine:
+        return {"state": "unknown", "detail": "Component not found on status page", "incident": None}
+    ids = {c["id"] for c in mine} | {c.get("group_id") for c in mine}
+    state = max((COMPONENT.get(c.get("status"), "degraded") for c in mine), key=lambda x: RANK[x])
+    bad = [c for c in mine if c.get("status") != "operational"]
+
+    def touches(ev):
+        return any(c.get("id") in ids or rx.search(c.get("name", "")) for c in ev.get("components") or []) \
+            or rx.search(ev.get("name", ""))
+    events = [i for i in data.get("incidents") or [] if i.get("status") not in ("resolved", "postmortem") and touches(i)]
+    events += [m for m in data.get("scheduled_maintenances") or [] if m.get("status") == "in_progress" and touches(m)]
+    ev = events[0] if events else None
+    if ev and state == "up":
+        state = "maintenance" if ev in (data.get("scheduled_maintenances") or []) else "degraded"
+    if state == "up":
+        detail = f"All {len(mine)} regions operational"
+    else:
+        regions = ", ".join(sorted({c.get("name", "") for c in bad}))[:120]
+        detail = f"{len(bad)} of {len(mine)} regions affected: {regions}" if bad else "Active incident"
+    return {"state": state, "detail": detail,
+            "incident": {"title": _clip(ev.get("name")), "link": ev.get("shortlink") or base} if ev else None}
+
+
 def parse_slack(data: dict, base: str) -> dict:
     active = data.get("active_incidents") or []
     if data.get("status") == "ok" or not active:
@@ -118,7 +164,9 @@ MS_OK = {"available", "operational", "service restored", "resolved", "false posi
 MS_BUSINESS = [
     ("Outlook & Exchange (work)", ("exchange online", "outlook")),
     ("Microsoft Teams (work)", ("microsoft teams", "teams:")),
+    ("Microsoft Defender XDR (365)", ("defender",)),
 ]
+MS_SECURITY = {"Microsoft Defender XDR (365)"}  # shown under "Security tools"
 # consumer tiles: (display name, workload name in the feed, words that mean the umbrella incident affects it)
 MS_CONSUMER = [
     ("Outlook.com", "Outlook.com", ("outlook",)),
@@ -148,7 +196,8 @@ def parse_microsoft(mac: dict | None, consumer: list | None, azure: dict | None)
     cat, out = "Microsoft", []
 
     def tile(name, state, detail, title, page):
-        return {"name": name, "cat": cat, "page": page, "state": state, "detail": detail,
+        return {"name": name, "cat": "Security tools" if name in MS_SECURITY else cat, "page": page,
+                "state": state, "detail": detail,
                 "incident": {"title": title, "link": page} if title and state != "up" else None}
 
     if mac is not None:
@@ -209,8 +258,16 @@ def check_microsoft() -> list[dict]:
 def check_service(svc: dict) -> dict:
     base = svc["base"]
     try:
-        if svc["kind"] == "statuspage":
+        if svc["kind"] == "statuspage" and svc.get("match"):
+            out = parse_statuspage_filtered(_get_json(f"{base}/api/v2/summary.json"), base, svc["match"])
+        elif svc["kind"] == "statuspage":
             out = parse_statuspage(_get_json(f"{base}/api/v2/summary.json"), base)
+        elif svc["kind"] == "http":
+            r = check_site(base)
+            state = {"up": "up", "warn": "degraded", "down": "down"}[r["state"]]
+            bits = " · ".join(x for x in (r["detail"], f"{r['ms']} ms" if r["ms"] is not None else "") if x)
+            out = {"state": state, "detail": f"{svc.get('note', 'Reachability check')} · {bits}", "incident": None,
+                   "ms": r["ms"]}
         elif svc["kind"] == "slack":
             out = parse_slack(_get_json(f"{base}/api/v2.0.0/current"), base)
         else:
