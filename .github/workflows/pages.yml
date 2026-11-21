@@ -52,7 +52,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           WATCHLIST: ${{ vars.WATCHLIST }}
           WATCH_SITES: ${{ vars.WATCH_SITES }}
-        run: python3 -I -m app.cli
+        run: python3 -m app.cli   # runs only code from this checkout; -I would hide the app package
 
       - name: Check the published data contains no secrets
         env:
