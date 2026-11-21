@@ -1,5 +1,7 @@
 # ThreatPulse
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/zac4sick/threatpulse/badge)](https://scorecard.dev/viewer/?uri=github.com/zac4sick/threatpulse) [![CodeQL](https://github.com/zac4sick/threatpulse/actions/workflows/codeql.yml/badge.svg)](https://github.com/zac4sick/threatpulse/actions/workflows/codeql.yml) [![Tests](https://github.com/zac4sick/threatpulse/actions/workflows/ci.yml/badge.svg)](https://github.com/zac4sick/threatpulse/actions/workflows/ci.yml)
+
 A minimal, live threat-intel dashboard. It answers one question: **what needs my attention right now?**
 It runs free on GitHub Pages (recommended) or on Google Cloud Run.
 
@@ -84,14 +86,9 @@ DATA_PATH=/tmp/tp.json python -m app.cli   # one real refresh into a local file
 DATA_PATH=/tmp/tp.json python -m app.server  # http://127.0.0.1:8080
 ```
 
-## Security design
-- **Refresh endpoint:** only accepts a Google-signed OIDC token for this service's audience, issued to the scheduler service account. There is no shared secret to leak.
-- **Strict CSP:** no inline scripts or styles, no third-party anything. HSTS, `nosniff`, `frame-ancestors 'none'`, `no-referrer`.
-- **Untrusted feed data:** feeds are treated as untrusted. HTML is stripped server-side, the page renders with `textContent` only, and only `http(s)` links are shown. AI output is handled the same way.
-- **No stolen data, ever:** leak-site onion links, screenshots and page dumps from RansomLook are discarded on ingest.
-- **Defanged IOCs:** shown as `hxxp://evil[.]com`.
-- **Container:** non-root, minimal dependencies, keys only via Secret Manager. The bucket is private, with public access prevention.
-- **Resilience:** one feed failing never blanks the site. The previous data is kept, and footer dots show each source's health.
+## Security
+
+See [SECURITY.md](SECURITY.md) for the full list of controls and how to report a vulnerability. In short: actions are pinned to SHAs, workflows run with least privilege, CodeQL and Scorecard scan every change, and the site runs under a strict CSP with Trusted Types and Subresource Integrity.
 
 ## Data credits
 CISA KEV · FIRST EPSS · NIST NVD · Source: Ransomware.live · RansomLook (open source) · abuse.ch ThreatFox · Have I Been Pwned · BleepingComputer · The Hacker News · Sri Lanka CERT|CC.

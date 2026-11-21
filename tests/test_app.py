@@ -142,6 +142,7 @@ def test_new_p1_only_after_first_run(offline):
 # ------------------------------------------------------------------ server
 @pytest.fixture
 def client(tmp_path, monkeypatch):
+    pytest.importorskip("flask", reason="Cloud Run server tests need requirements.txt (not used by GitHub Pages)")
     monkeypatch.setenv("DATA_PATH", str(tmp_path / "data.json"))
     monkeypatch.delenv("DATA_BUCKET", raising=False)
     monkeypatch.delenv("ALLOW_UNAUTH_REFRESH", raising=False)
