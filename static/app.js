@@ -313,7 +313,7 @@
     return g;
   }
   function barList(obj) {
-    const e = Object.entries(obj || {}); if (!e.length) return el("div", { class: "empty" }, "Not enough data yet.");
+    const e = Object.entries(obj || {}).sort((a, b) => b[1] - a[1]); if (!e.length) return el("div", { class: "empty" }, "Not enough data yet.");
     const max = Math.max(...e.map(x => x[1]));
     return el("div", {}, e.map(([k, v]) => el("div", { class: "hbar" }, el("span", { title: k }, k),
       svg("svg", { viewBox: "0 0 100 10", preserveAspectRatio: "none", "aria-hidden": "true" }, svg("rect", { x: 0, y: 0, height: 10, rx: 2, width: Math.max(2, (v / max) * 100) })),
